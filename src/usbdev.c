@@ -57,7 +57,7 @@ static const struct {
 }
 devinfo[] = {
     {0x046d, 0xc603, O, "SpaceMouse Plus XT USB" ,          "",           10, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}},  // Manual says 11 is the * reported? Buttons order? Side button names? "L" "R"?
-    {0x046d, 0xc605, O, "CADman",                           "",            4, {"1", "2", "3", "4"}},  // Buttons order? Names?
+    {0x046d, 0xc605, O, "CadMan USB",                       "",            4, {"1", "2", "3", "4"}},  // Buttons order? Names? "CadMan3 USB" on the label // Tested working
     {0x046d, 0xc606, O, "SpaceMouse Classic USB",           "",            8, {"1", "2", "3", "4", "5", "6", "7", "8"}},  // Manual says 11 is the * reported?
     {0x046d, 0xc621, O, "Spaceball 5000 USB",               "5000 USB",   12, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C"}},  // Tested working
     {0x046d, 0xc623, O, "SpaceTraveler",                    "",            8, {"1", "2", "3", "4", "5", "6", "7", "8"}},  // Tested working
@@ -347,6 +347,19 @@ static int usbdev_read_N(struct spndev* dev, union spndev_event* evt)
 
 static void usbdev_setled(struct spndev *dev, int led)
 {
+    /* The LED report is 4. The second byte is the LED state. It is a bit mask.
+     * 0 means all LEDs off. Most 3Dconnexion devices have a single LED under the
+     * 3D "cap/hat". That LED is controlled by bit 0.
+     *
+     * "CadMan USB" has four LEDs under the four buttons. They are mapped as follows:
+     *
+     * BIT       LED under button
+     * 0 (0x01)  3 (left of hat)
+     * 1 (0x02)  4 (right of hat)
+     * 2 (0x04)  1 (top left of hat)
+     * 3 (0x08)  2 (top right of hat)
+     *
+     * Thus 0x0F would turn on all four LEDs. */
     const unsigned char led_report[2] = {4, (unsigned char)led};
     hid_write((hid_device*)dev->handle, led_report, sizeof(led_report));
     dev->led = led;

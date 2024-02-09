@@ -314,7 +314,7 @@ static int guess_device(const char *verstr)
 		return DEV_SPEXP;
 	}
 
-	fprintf(stderr, "Unknown serial device. Even if it works, please report this"
+	fprintf(stderr, "Unknown serial device. Even if it works, please report this "
 			"as a bug at https://github.com/FreeSpacenav/libspnavdev/issues\n");
 	fprintf(stderr, "Please include the following version string in your bug report: \"%s\"\n", verstr);
 	return DEV_UNKNOWN;
