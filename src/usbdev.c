@@ -59,8 +59,8 @@ devinfo[] = {
     {0x046d, 0xc603, O, "SpaceMouse Plus XT USB" ,          "",           10, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}},  // Manual says 11 is the * reported? Buttons order? Side button names? "L" "R"?
     {0x046d, 0xc605, O, "CadMan USB",                       "",            4, {"1", "2", "3", "4"}},  // Buttons order? Names? "CadMan3 USB" on the label // Tested working
     {0x046d, 0xc606, O, "SpaceMouse Classic USB",           "",            8, {"1", "2", "3", "4", "5", "6", "7", "8"}},  // Manual says 11 is the * reported?
-    {0x046d, 0xc621, O, "Spaceball 5000 USB",               "5000 USB",   12, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C"}},  // Tested working
-    {0x046d, 0xc623, O, "SpaceTraveler",                    "",            8, {"1", "2", "3", "4", "5", "6", "7", "8"}},  // Tested working
+    {0x046d, 0xc621, O, "SpaceBall 5000 USB",               "SB5000 USB", 12, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C"}},  // Tested working
+    {0x046d, 0xc623, O, "SpaceTraveler USB",                "",            8, {"1", "2", "3", "4", "5", "6", "7", "8"}},  // Tested working
     {0x046d, 0xc625, O, "SpacePilot",                       "SP1 USB",    21, {"1", "2", "3", "4", "5", "6", "T", "L", "R", "F", "ESC", "ALT", "SHIFT", "CTRL", "FIT", "PANEL", "+", "-", "Dom", "3D Lock", "Config"}},  // IBM "(P) P/N: 60K9206", "(P) FRU P/N: 4K9204" Tested working
     {0x046d, 0xc626, O, "SpaceNavigator",                   "3DX-700028",  2, {"MENU", "FIT"} },  // also "3DX-600027" "3DX-600028" "3DX-600029"? "SpaceNavigator USB" on the label
     {0x046d, 0xc627, O, "SpaceExplorer",                    "3DX-700026", 15, {"1", "2", "T", "L", "R", "F", "ESC", "ALT", "SHIFT", "CTRL", "FIT", "PANEL", "+", "-", "2D"}},  // Also "3DX-600029"? "3DX-600025" both "SpaceExplorer USB" "DLZ-3DX-700026 (B)" on the other side,  "Part No. 3DX-700026" on the box  // Tested working
