@@ -22,8 +22,9 @@ project(
   VERSION 0.1
   LANGUAGES C)
 
-find_package(HIDAPI)
-
+if(WIN32)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 add_library(spnavdev
   src/serdev.c
@@ -31,11 +32,31 @@ add_library(spnavdev
   src/usbdev.c
 )
 
-if(HIDAPI_FOUND)
-  set(HAVE_HIDAPI TRUE)
-  target_link_libraries(spnavdev PRIVATE ${HIDAPI_LIBRARY})
-  target_include_directories(spnavdev PRIVATE ${HIDAPI_INCLUDE_DIR})
+if(WIN32)
+  target_sources(spnavdev PRIVATE
+    src/serio_win32.c
+  )
+else()
+  target_sources(spnavdev PRIVATE
+    src/serio_posix.c
+  )
 endif()
+
+if(WIN32 OR APPLE OR EMSCRIPTEN)
+  set(HAVE_HIDAPI TRUE)
+  set(BUILD_SHARED_LIBS FALSE)
+  add_subdirectory(extlib/hidapi)
+  target_link_libraries(spnavdev PRIVATE hidapi::hidapi)
+  target_include_directories(spnavdev PRIVATE ${CMAKE_BINARY_DIR}/extlib/hidapi/hidapi)
+else()
+  find_package(HIDAPI)
+  if(HIDAPI_FOUND)
+    set(HAVE_HIDAPI TRUE)
+    target_link_libraries(spnavdev PRIVATE ${HIDAPI_LIBRARY})
+    target_include_directories(spnavdev PRIVATE ${HIDAPI_INCLUDE_DIR})
+  endif()
+endif()
+
 target_include_directories(spnavdev PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
 
 configure_file(config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)

@@ -1,0 +1,3 @@
+[submodule "extlib/hidapi"]
+	path = extlib/hidapi
+	url = https://github.com/libusb/hidapi.git
