@@ -83,8 +83,6 @@ static void close_dev_serial(struct spndev* dev);
 static int read_dev_serial(struct spndev* dev, union spndev_event* evt);
 static int init_dev(struct spndev *dev, int type);
 
-static int stty_sball(int fd, struct sball *sb);
-static int stty_mag(int fd, struct sball *sb);
 static void stty_save(int fd, struct sball *sb);
 static void stty_restore(int fd, struct sball *sb);
 
@@ -96,7 +94,6 @@ static int sball_parsepkt(struct spndev* dev, union spndev_event* evt, int id, c
 static int guess_device(const char *verstr);
 
 static void make_printable(char *buf, int len);
-static int read_timeout(int fd, char *buf, int bufsz, long tm_usec);
 static void gen_button_events(struct sball* sb, unsigned int prev, union spndev_event* evt);
 
 
@@ -135,7 +132,7 @@ int spndev_ser_open(struct spndev *dev, const char *devstr)
 	}
 	serwrite(fd, "\r@RESET\r", 8);
 
-	if((sz = read_timeout(fd, buf, sizeof buf - 1, 2000000)) > 0 && strstr(buf, "\r@1")) {
+	if((sz = serread_timeout(fd, buf, sizeof buf - 1, 2000000)) > 0 && strstr(buf, "\r@1")) {
 		/* we got a response, so it's a spaceball */
 		make_printable(buf, sz);
 		if(init_dev(dev, guess_device(buf)) == -1) {
@@ -159,9 +156,9 @@ int spndev_ser_open(struct spndev *dev, const char *devstr)
 	if(stty_mag(fd, sb) == -1) {
 		goto err;
 	}
-	serwrite(fd, "vQ\r", 3);
+	serwrite(fd, "\rvQ\r", 4);
 
-	if((sz = read_timeout(fd, buf, sizeof buf - 1, 250000)) > 0 && buf[0] == 'v') {
+	if((sz = serread_timeout(fd, buf, sizeof buf - 1, 250000)) > 0 && buf[0] == 'v') {
 		make_printable(buf, sz);
 		if(init_dev(dev, guess_device(buf)) == -1) {
 			fprintf(stderr, "spndev_open: failed to initialize device structure\n");
@@ -181,8 +178,7 @@ int spndev_ser_open(struct spndev *dev, const char *devstr)
 		   mode */
 		serwrite(fd, "c32\r", 4);
 #endif
-		sz = read_timeout(fd, buf, sizeof buf - 1, 250000);
-
+		sz = serread_timeout(fd, buf, sizeof buf - 1, 250000);
 		sb->parse = mag_parsepkt;
 		return 0;
 	}
@@ -320,8 +316,6 @@ static int guess_device(const char *verstr)
 	return DEV_UNKNOWN;
 }
 
-static int stty_sball(int fd, struct sball* sb) { return 0; }
-static int stty_mag(int fd, struct sball* sb) { return 0; }
 static void stty_save(int fd, struct sball* sb) {}
 static void stty_restore(int fd, struct sball* sb) {}
 
@@ -365,12 +359,15 @@ static int mag_parsepkt(struct spndev* dev, union spndev_event* evt, int id, cha
 	case 'd':
 #ifdef TURBO_MAGELLAN_COMPRESS
 		if(len != 14) {
+			fprintf(stderr, "magellan: invalid data packet, expected 14 bytes, got: %d\n", len);
+			return -1;
+		}
 #else
 		if(len != 24) {
-#endif
 			fprintf(stderr, "magellan: invalid data packet, expected 24 bytes, got: %d\n", len);
 			return -1;
 		}
+#endif
 //		evt->type = SPNDEV_MOTION;
 		for(i = 0; i < dev->num_axes; i++) {
 			prev = evt->mot.v[i];
@@ -582,13 +579,6 @@ static int sball_parsepkt(struct spndev* dev, union spndev_event* evt, int id, c
 
 // Probably not needed used in the original dev_serial.c only to make sure that an unknown message can be printf-ed
 static void make_printable(char* buf, int len) {}
-
-// Only used in the spndev_ser_open function after opening the serial purt (and thus powerin the device)
-// to allow for the first bytes to arrive. Since on Win32 I configure the serial port "blocking" enyway this is not
-// really needed. Kept in case in Linux/Unix or some other platform it is harder to achive.
-static int read_timeout(int fd, char* buf, int bufsz, long tm_usec) {
-	return serread(fd, buf, bufsz);
-}
 
 static void gen_button_events(struct sball* sb, unsigned int prev, union spndev_event* evt) {
 	int i;

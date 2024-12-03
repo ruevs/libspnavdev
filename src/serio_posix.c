@@ -39,9 +39,16 @@ int serread(int h, void* buf, unsigned int len) {
     return read(h, buf, len);
 }
 
+int serread_timeout(int h, void* buf, unsigned int len, long tm_usec) {
+    return serread(h, buf, len);
+}
+
 int serwrite(int h, void const* buf, unsigned int len) {
     return write(h, buf, len);
 }
+
+int stty_sball(int h, struct sball* sb) { return 0; }
+int stty_mag(int h, struct sball* sb) { return 0; }
 
 int serclose(int h) {
     return close(h);

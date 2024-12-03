@@ -25,7 +25,10 @@ extern "C" {
 
 int seropen(char const* devstr);
 int serread(int h, void* buf, unsigned int len);
+int serread_timeout(int h, void* buf, unsigned int len, long tm_usec);
 int serwrite(int h, void const* buf, unsigned int len);
+int stty_sball(int h, struct sball* sb);
+int stty_mag(int h, struct sball* sb);
 int serclose(int h);
 
 #ifdef __cplusplus
