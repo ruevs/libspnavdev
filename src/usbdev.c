@@ -28,9 +28,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <malloc.h>
 
+#include "dev.h"
+
 #ifdef HAVE_HIDAPI
 #include "hidapi.h"
-#include "dev.h"
 
 #define max_num_btn 48
 #define max_buf_size 80

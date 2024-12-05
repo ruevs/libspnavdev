@@ -27,6 +27,8 @@ extern "C" {
 #include <termios.h>
 #endif
 
+#include "dev.h"
+
 #define INP_BUF_SZ	256
 
 struct sball {

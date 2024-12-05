@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 #include <fcntl.h>
+#include <unistd.h>
 #include "serio.h"
 
 // http://unixwiz.net/techtips/termios-vmin-vtime.html
