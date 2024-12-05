@@ -63,7 +63,7 @@ jobs:
 
     - name: Install HIDAPI
       if: "matrix.os == 'ubuntu-latest'"
-      run: sudo apt-get -y install libhidapi-hidraw0
+      run: sudo apt-get -y install libhidapi-dev
       shell: bash
 
     - name: Configure CMake
