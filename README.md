@@ -40,6 +40,8 @@ If you own a SpaceMouse not listed above please test it and report your results 
 run the test[.exe] program that is built in the examples directory when you [compile](#Building)
 the library.
 
+Or download the latest automatically built binary of the test program for [**Windows here**](https://nightly.link/ruevs/libspnavdev/workflows/cd/master/Windows.zip).
+
 ## Building 
 
 Irrespective of the OS used, before building, check out the project and the necessary submodules:
