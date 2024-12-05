@@ -23,6 +23,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
+#ifndef _WIN32
+#include <termios.h>
+#endif
+
+#define INP_BUF_SZ	256
+
+struct sball {
+	int type;
+	unsigned int flags;
+
+	char buf[INP_BUF_SZ];
+	int len;
+
+	unsigned int keystate, keymask;
+
+#ifndef _WIN32
+	struct termios saved_term;
+#endif
+	int saved_mstat;
+
+	int (*parse)(struct spndev*, union spndev_event*, int, char*, int);
+};
+
 int seropen(char const* devstr);
 int serread(int h, void* buf, unsigned int len);
 int serread_timeout(int h, void* buf, unsigned int len, long tm_usec);

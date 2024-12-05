@@ -22,17 +22,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #    define _CRT_NONSTDC_NO_WARNINGS /* Avoid errors with open, read, write, close on Win32*/
 #endif
 
-#include <io.h>
 #include <fcntl.h>
-
-#if defined(_WIN32)
-#    undef _CRT_NONSTDC_NO_WARNINGS
-#endif
+#include "serio.h"
 
 // http://unixwiz.net/techtips/termios-vmin-vtime.html
 
 int seropen(char const* devstr) {
-    return open(devstr, _O_RDWR /* | O_NOCTTY | O_NONBLOCK */);
+    return open(devstr, O_RDWR | O_NOCTTY | O_NONBLOCK);
 }
 
 int serread(int h, void* buf, unsigned int len) {

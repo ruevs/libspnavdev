@@ -4,6 +4,7 @@
 #endif
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <malloc.h>
 #include <ctype.h>
 #if defined(_WIN32)
@@ -24,30 +25,11 @@
 #define SPNDEV_BIG_ENDIAN
 #endif
 
-#define INP_BUF_SZ	256
-
 #define TURBO_MAGELLAN_COMPRESS
 
 enum {
 	SB4000	= 1,
 	FLIPXY	= 2
-};
-
-struct sball {
-	int type;
-	unsigned int flags;
-
-	char buf[INP_BUF_SZ];
-	int len;
-
-	unsigned int keystate, keymask;
-
-#ifndef _WIN32
-	struct termios saved_term;
-#endif
-	int saved_mstat;
-
-	int (*parse)(struct spndev*, union spndev_event*, int, char*, int);
 };
 
 enum {
