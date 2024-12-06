@@ -150,8 +150,8 @@ However apart from the first [two commits](https://github.com/FreeSpacenav/libsp
 where he set up the API but no functionality behind it - he never worked on it and eventually
 [declared it abandoned](https://github.com/FreeSpacenav/libspnavdev/commit/427f98957b3691197a48a03315395c3b8df6101a).
 
-In February 2021 I got a SpeceExplorer for debugging the [SolveSpace](https://github.com/FreeSpacenav/libspnavdev/commit/427f98957b3691197a48a03315395c3b8df6101a)
-support for SpaceMice. I got interested in the low-level HID API of the 3Dconnexion devices and
+In February 2021 I got a SpeceExplorer for [debugging](https://github.com/solvespace/solvespace/issues/847) the [SolveSpace](https://solvespace.com)
+[support for SpaceMice](https://github.com/solvespace/solvespace/pull/968). I got interested in the low-level HID API of the 3Dconnexion devices and
 decided to write my own driver/library. I quickly discovered that the protocol is easy and many had
 done the same in the past. But there was no simple low-level library written in C that supported
 all devices. That is when I found `libspnavdev`, which was only a "scaffold", and
