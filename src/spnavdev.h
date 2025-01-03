@@ -51,7 +51,7 @@ union spndev_event {
 
 /* possible devstr parameters:
  * - null: auto-detect (USB only)
- * - device file (/dev/ttyS0 or /dev/input/event42)
+ * - device file (e.g. COM6 or /dev/ttyS0 or /dev/input/event42)
  * - usb id (046d:c625)
  */
 struct spndev *spndev_open(const char *devstr);
