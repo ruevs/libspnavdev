@@ -145,14 +145,21 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
                     pidmatch = 1;
                     hid_device* hiddev = hid_open_path(cinfo->path);
                     if (hiddev) {
+                        size_t name_length;
+
                         if (!(dev->path = _strdup(cinfo->path))) {
                             fprintf(stderr, "spndev_open: Failed to allocate device path\n");
                             goto cleanup;
                         }
-                        if (!(dev->name = (char*)_wcsdup(cinfo->product_string))) {
+
+                        // The length of the UTF8 encoding of the UTF16 device name + 1 fot the 0
+                        name_length = 1 + wcsrtombs(0, &cinfo->product_string, 0, 0);
+                        if (!(dev->name = (char*)calloc(1, name_length))) {
                             fprintf(stderr, "spndev_open: Failed to allocate device name\n");
                             goto cleanup;
                         }
+                        name_length = wcsrtombs(dev->name, &cinfo->product_string, name_length, 0);
+
                         if (-1 == hid_set_nonblocking(hiddev, 1)) {
                             fprintf(stderr, "spndev_open: Failed to set non-blocking HID mode.\n");
                             goto cleanup;
