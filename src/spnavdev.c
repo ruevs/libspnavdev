@@ -25,7 +25,7 @@ struct spndev *spndev_open(const char *devstr)
 	struct spndev *dev;
 	uint16_t vendor = 0xffff, product = 0xffff;
 
-	if(!(dev = malloc(sizeof *dev))) {
+	if(!(dev = (struct spndev*)malloc(sizeof *dev))) {
 		perror("spndev_open: failed to allocate device structure");
 		return 0;
 	}

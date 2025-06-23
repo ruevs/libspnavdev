@@ -94,7 +94,7 @@ int spndev_ser_open(struct spndev *dev, const char *devstr)
 	dev->usb_vendor = dev->usb_product = 0xFFFF;
 	dev->handle = 0;
 
-	if(!(sb = calloc(1, sizeof *sb))) {
+	if(!(sb = (struct sball*)calloc(1, sizeof *sb))) {
 		fprintf(stderr, "spndev_open: failed to allocate sball object\n");
 		goto err;
 	}
@@ -173,7 +173,7 @@ err:
 static void close_dev_serial(struct spndev *dev)
 {
 	if(dev->drvdata) {
-		stty_restore(dev->fd, dev->drvdata);
+		stty_restore(dev->fd, (struct sball*)dev->drvdata);
 		serclose(dev->fd);
 		free(dev->drvdata);
 	}
@@ -210,7 +210,7 @@ static int read_dev_serial(struct spndev* dev, union spndev_event* evt)
 static int init_dev(struct spndev *dev, int type)
 {
 	int i;
-	struct sball *sb = dev->drvdata;
+	struct sball *sb = (struct sball*)dev->drvdata;
 	static const char *axnames[] = {"Tx", "Ty", "Tz", "Rx", "Ry", "Rz"};
 
 	if(!(dev->name = strdup(devinfo[type].name))) {
@@ -220,11 +220,11 @@ static int init_dev(struct spndev *dev, int type)
 	dev->num_buttons = devinfo[type].nbuttons;
 	sb->keymask      = 0xffff >> (16 - dev->num_buttons);
 
-	if(!(dev->aprop = malloc(dev->num_axes * sizeof *dev->aprop))) {
+	if(!(dev->aprop = (struct axisprop*)malloc(dev->num_axes * sizeof *dev->aprop))) {
 		free(dev->name);
 		return -1;
 	}
-	if(!(dev->bn_name = malloc(dev->num_buttons * sizeof *dev->bn_name))) {
+	if(!(dev->bn_name = (const char**)malloc(dev->num_buttons * sizeof *dev->bn_name))) {
 		free(dev->aprop);
 		free(dev->name);
 	}

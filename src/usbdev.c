@@ -30,8 +30,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "dev.h"
 
-#ifdef HAVE_HIDAPI
+#if defined(HAVE_HIDAPI) || defined(HAVE_WEBHIDAPI)
+
+#if defined(HAVE_HIDAPI)
 #include "hidapi.h"
+#elif defined(HAVE_WEBHIDAPI)
+#include "webhidapi.h"
+#endif
 
 #define max_num_btn 48
 #define max_buf_size 80
@@ -45,18 +50,21 @@ static const int axis_deadz = 0;
 typedef struct spnav_hid {
     unsigned char btn[max_num_btn];
     unsigned char buf[max_buf_size];
+    size_t reportsize;
 } tspnav_hid;
 
-static const struct {
+typedef enum { O = 0, N = 1 } oldnewreport;
+typedef struct {
     uint16_t vid;
     uint16_t pid;
-    enum {O=0, N=1} posrotreport;   // Old (two reports) or New (single report) positon and rotation data
+    oldnewreport posrotreport;   // Old (two reports) or New (single report) positon and rotation data
     const char* name;
     const char* pn;     // "P/N:" part number "Part No." from the label or box
     int nbuttons;
     const char* const bnames[32];
-}
-devinfo[] = {
+} dev_info;
+
+static const dev_info devinfo[] = {
     {0x046d, 0xc603, O, "SpaceMouse Plus XT USB" ,          "",           10, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}},  // Manual says 11 is the * reported? Buttons order? Side button names? "L" "R"?
     {0x046d, 0xc605, O, "CadMan USB",                       "",            4, {"1", "2", "3", "4"}},  // Buttons order? Names? "CadMan3 USB" on the label // Tested working
     {0x046d, 0xc606, O, "SpaceMouse Classic USB",           "",            8, {"1", "2", "3", "4", "5", "6", "7", "8"}},  // Manual says 11 is the * reported?
@@ -84,8 +92,9 @@ static const unsigned num_known_devs = sizeof(devinfo)/sizeof(devinfo[0]);
 
 static int usbdev_init(struct spndev* dev, const unsigned type);
 static void usbdev_close(struct spndev* dev);
-static int usbdev_read_O(struct spndev* dev, union spndev_event* evt);
-static int usbdev_read_N(struct spndev* dev, union spndev_event* evt);
+static int usbdev_read(struct spndev* dev, union spndev_event* evt);
+static int usbdev_parse_O(struct spndev* dev, union spndev_event* evt);
+static int usbdev_parse_N(struct spndev* dev, union spndev_event* evt);
 static void usbdev_setled(struct spndev* dev, int led);
 static int usbdev_getled(struct spndev* dev);
 static inline void usbdev_parsebuttons(const struct spndev* dev, union spndev_event* evt, const unsigned char* report);
@@ -147,18 +156,18 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
                     if (hiddev) {
                         size_t name_length;
 
-                        if (!(dev->path = _strdup(cinfo->path))) {
+                        if (!(dev->path = strdup(cinfo->path))) {
                             fprintf(stderr, "spndev_open: Failed to allocate device path\n");
                             goto cleanup;
                         }
 
-                        // The length of the UTF8 encoding of the UTF16 device name + 1 fot the 0
-                        name_length = 1 + wcsrtombs(0, &cinfo->product_string, 0, 0);
+                        // The length of the UTF8 encoding of the UTF16 device name + 1 for the 0
+                        name_length = 1 + wcsrtombs(0, (const wchar_t**)&cinfo->product_string, 0, 0);
                         if (!(dev->name = (char*)calloc(1, name_length))) {
                             fprintf(stderr, "spndev_open: Failed to allocate device name\n");
                             goto cleanup;
                         }
-                        name_length = wcsrtombs(dev->name, &cinfo->product_string, name_length, 0);
+                        name_length = wcsrtombs(dev->name, (const wchar_t**)&cinfo->product_string, name_length, 0);
 
                         if (-1 == hid_set_nonblocking(hiddev, 1)) {
                             fprintf(stderr, "spndev_open: Failed to set non-blocking HID mode.\n");
@@ -224,10 +233,10 @@ static int usbdev_init(struct spndev* dev, const unsigned type)
         return -1;
     }
 
-    if (!(dev->aprop = malloc(dev->num_axes * sizeof * dev->aprop))) {
+    if (!(dev->aprop = (struct axisprop*)malloc(dev->num_axes * sizeof * dev->aprop))) {
         return -1;
     }
-    if (!(dev->bn_name = malloc(dev->num_buttons * sizeof * dev->bn_name))) {
+    if (!(dev->bn_name = (const char **)malloc(dev->num_buttons * sizeof * dev->bn_name))) {
         return -1;
     }
 
@@ -242,17 +251,17 @@ static int usbdev_init(struct spndev* dev, const unsigned type)
     }
 
     dev->close = usbdev_close;
+    dev->read = usbdev_read;
     if (O == devinfo[type].posrotreport) {
-        dev->read = usbdev_read_O;
+        ((tspnav_hid*)dev->drvdata)->reportsize = oldposrotreportsize;
     } else if (N == devinfo[type].posrotreport) {
-        dev->read = usbdev_read_N;
-    }
-    else {
+        ((tspnav_hid*)dev->drvdata)->reportsize = newposrotreportsize;
+    } else {
         // WTF?
     }
     dev->getled = usbdev_getled;
     dev->setled = usbdev_setled;
-    if((dev->usb_vendor == devinfo[5].vid) && (dev->usb_product == devinfo[5].pid)) {   // ToDo: The constant 4 here is an ugly hack
+    if((dev->usb_vendor == devinfo[5].vid) && (dev->usb_product == devinfo[5].pid)) {   // ToDo: The constant 5 here is an ugly hack
         /* The device is a SpacePilot USB. Connect the LCD support functions. */
         dev->setlcdbl = SpacePilotLCDSetBl;
         dev->getlcdbl = SpacePilotLCDGetBl;
@@ -274,81 +283,94 @@ static void usbdev_close(struct spndev *dev) {
 }
 
 
-// Read and parse "Old" (two reports) style positon and rotation data
-static int usbdev_read_O(struct spndev *dev, union spndev_event *evt)
+// Read and parse positon and rotation data
+static int usbdev_read(struct spndev* dev, union spndev_event* evt)
 {
     evt->type = SPNDEV_NONE;
-    unsigned char *buffer = ((tspnav_hid*)dev->drvdata)->buf;
+    unsigned char* buffer = ((tspnav_hid*)dev->drvdata)->buf;
 
-    if (hid_read((hid_device*)dev->handle, buffer, oldposrotreportsize) > 0) {
-        switch (buffer[0]) {
-        case 0:
-            for (size_t i = 0; i < oldposrotreportsize; ++i) {
-                printf("%x", buffer[i]);
-            }
-            break;
-
-        case 1:   // Translation
-            evt->type = SPNDEV_MOTION;
-            for (int i = 0; i < 3; ++i) {
-                evt->mot.v[i] = *(int16_t*)(buffer + 1 + 2 * i);
-                checkrange(dev, evt->mot.v[i]);
-            }
-            break;
-
-        case 2:   // Rotation
-            evt->type = SPNDEV_MOTION;
-            for (int i = 0; i < 3; ++i) {
-                evt->mot.v[i + 3] = *(int16_t*)(buffer + 1 + 2 * i);
-                checkrange(dev, evt->mot.v[i + 3]);
-            }
-            break;
-        case 3:  // Buttons
-            usbdev_parsebuttons(dev, evt, buffer);
-            break;
-
-        default:
-            for (size_t i = 0; i < newposrotreportsize; ++i) {
-                printf("%x", buffer[i]);
-            }
-            break;
+    if (hid_read((hid_device*)dev->handle, buffer, ((tspnav_hid*)dev->drvdata)->reportsize) > 0) {
+        if (oldposrotreportsize == ((tspnav_hid*)dev->drvdata)->reportsize) {
+            usbdev_parse_O(dev, evt);
+        }
+        else {
+            usbdev_parse_N(dev, evt);
         }
     }
     return evt->type;
 }
 
-// Read and parse "New" (single report) style positon and rotation data
-static int usbdev_read_N(struct spndev* dev, union spndev_event* evt)
+// Parse "Old" (two reports) style positon and rotation data
+static int usbdev_parse_O(struct spndev* dev, union spndev_event* evt)
+{
+    evt->type = SPNDEV_NONE;
+    unsigned char *buffer = ((tspnav_hid*)dev->drvdata)->buf;
+
+    switch (buffer[0]) {
+    case 0:
+        for (size_t i = 0; i < ((tspnav_hid*)dev->drvdata)->reportsize; ++i) {
+            printf("%x", buffer[i]);
+        }
+        break;
+
+    case 1:   // Translation
+        evt->type = SPNDEV_MOTION;
+        for (int i = 0; i < 3; ++i) {
+            evt->mot.v[i] = *(int16_t*)(buffer + 1 + 2 * i);
+            checkrange(dev, evt->mot.v[i]);
+        }
+        break;
+
+    case 2:   // Rotation
+        evt->type = SPNDEV_MOTION;
+        for (int i = 0; i < 3; ++i) {
+            evt->mot.v[i + 3] = *(int16_t*)(buffer + 1 + 2 * i);
+            checkrange(dev, evt->mot.v[i + 3]);
+        }
+        break;
+    case 3:  // Buttons
+        usbdev_parsebuttons(dev, evt, buffer);
+        break;
+
+    default:
+        for (size_t i = 0; i < ((tspnav_hid*)dev->drvdata)->reportsize; ++i) {
+            printf("%x", buffer[i]);
+        }
+        break;
+    }
+    return evt->type;
+}
+
+// Parse "New" (single report) style positon and rotation data
+static int usbdev_parse_N(struct spndev* dev, union spndev_event* evt)
 {
     evt->type = SPNDEV_NONE;
     unsigned char* buffer = ((tspnav_hid*)dev->drvdata)->buf;
 
-    if (hid_read((hid_device*)dev->handle, buffer, newposrotreportsize) > 0) {
-        switch (buffer[0]) {
-        case 0:
-            for (size_t i = 0; i < newposrotreportsize; ++i) {
-                printf("%x", buffer[i]);
-            }
-            break;
-
-        case 1:   // Translation & Rotation
-            evt->type = SPNDEV_MOTION;
-            for (int i = 0; i < 6; ++i) {
-                evt->mot.v[i] = *(int16_t*)(buffer + 1 + 2 * i);
-                checkrange(dev, evt->mot.v[i]);
-            }
-            break;
-
-        case 3:  // Buttons
-            usbdev_parsebuttons(dev, evt, buffer);
-            break;
-
-        default:
-            for (size_t i = 0; i < newposrotreportsize; ++i) {
-                printf("%x", buffer[i]);
-            }
-            break;
+    switch (buffer[0]) {
+    case 0:
+        for (size_t i = 0; i < ((tspnav_hid*)dev->drvdata)->reportsize; ++i) {
+            printf("%x", buffer[i]);
         }
+        break;
+
+    case 1:   // Translation & Rotation
+        evt->type = SPNDEV_MOTION;
+        for (int i = 0; i < 6; ++i) {
+            evt->mot.v[i] = *(int16_t*)(buffer + 1 + 2 * i);
+            checkrange(dev, evt->mot.v[i]);
+        }
+        break;
+
+    case 3:  // Buttons
+        usbdev_parsebuttons(dev, evt, buffer);
+        break;
+
+    default:
+        for (size_t i = 0; i < ((tspnav_hid*)dev->drvdata)->reportsize; ++i) {
+            printf("%x", buffer[i]);
+        }
+        break;
     }
     return evt->type;
 }
