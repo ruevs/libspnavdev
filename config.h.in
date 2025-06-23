@@ -18,4 +18,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SPNAVDEV_CONFIG_H_
 #define SPNAVDEV_CONFIG_H_
 #cmakedefine HAVE_HIDAPI
+#cmakedefine HAVE_WEBHIDAPI
 #endif
