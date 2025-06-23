@@ -20,10 +20,20 @@ cmake_minimum_required(VERSION 3.1...3.19)
 project(
   libspnavdev
   VERSION 0.1
-  LANGUAGES C)
+)
 
 if(WIN32)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
+if(EMSCRIPTEN)
+  set (CMAKE_CXX_STANDARD 11)
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  SET_SOURCE_FILES_PROPERTIES(
+    src/serdev.c
+    src/spnavdev.c
+    src/usbdev.c
+    PROPERTIES LANGUAGE CXX )
 endif()
 
 add_library(spnavdev
@@ -42,12 +52,15 @@ else()
   )
 endif()
 
-if(WIN32 OR APPLE OR EMSCRIPTEN)
+if(WIN32 OR APPLE)
   set(HAVE_HIDAPI TRUE)
   set(BUILD_SHARED_LIBS FALSE)
   add_subdirectory(extlib/hidapi)
   target_link_libraries(spnavdev PRIVATE hidapi::hidapi)
   target_include_directories(spnavdev PRIVATE ${CMAKE_BINARY_DIR}/extlib/hidapi/hidapi)
+elseif(EMSCRIPTEN)
+  set(HAVE_WEBHIDAPI TRUE)
+  set(BUILD_SHARED_LIBS FALSE)
 else()
   find_package(hidapi)
   if(hidapi_FOUND)
@@ -66,6 +79,8 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   # We are our own project, not a subproject
   if(WIN32)
     add_subdirectory(examples/win32)
+  elseif(EMSCRIPTEN)
+    add_subdirectory(examples/web)
   else()
     add_subdirectory(examples/unix)
   endif()
