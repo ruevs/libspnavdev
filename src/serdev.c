@@ -64,6 +64,7 @@ static struct {
 static void close_dev_serial(struct spndev* dev);
 static int read_dev_serial(struct spndev* dev, union spndev_event* evt);
 static int init_dev(struct spndev *dev, int type);
+static int deinit_dev(struct spndev* dev);
 
 static void stty_save(int fd, struct sball *sb);
 static void stty_restore(int fd, struct sball *sb);
@@ -126,7 +127,8 @@ int spndev_ser_open(struct spndev *dev, const char *devstr)
 
 		/* set binary mode and enable automatic data packet sending. also request
 		 * a key event to find out as soon as possible if this is a 4000flx with
-		 * 12 buttons
+		 * 12 buttons - this does not work, it responds with "?k". The mode is
+		 * switched the first time a button is pressed.
 		*/
 		serwrite(fd, "\rCB\rMSSV\rk\r", 11);
 
@@ -172,6 +174,7 @@ err:
 
 static void close_dev_serial(struct spndev *dev)
 {
+	deinit_dev(dev);
 	if(dev->drvdata) {
 		stty_restore(dev->fd, (struct sball*)dev->drvdata);
 		serclose(dev->fd);
@@ -227,6 +230,7 @@ static int init_dev(struct spndev *dev, int type)
 	if(!(dev->bn_name = (const char**)malloc(dev->num_buttons * sizeof *dev->bn_name))) {
 		free(dev->aprop);
 		free(dev->name);
+		return -1;
 	}
 
 	for(i = 0; i < dev->num_axes; i++) {
@@ -239,6 +243,21 @@ static int init_dev(struct spndev *dev, int type)
 
 	/* TODO setup callbacks */
 	return 0;
+}
+
+static int deinit_dev(struct spndev* dev) {
+	if (dev->bn_name) {
+		free(dev->bn_name);
+		dev->bn_name = 0;
+	}
+	if (dev->aprop) {
+		free(dev->aprop);
+		dev->aprop = 0;
+	}
+	if (dev->name) {
+		free(dev->name);
+		dev->name = 0;
+	}
 }
 
 static int guess_device(const char *verstr)
@@ -270,6 +289,11 @@ static int guess_device(const char *verstr)
 				 * packet. I'll also request a key report during init to make
 				 * sure this happens as soon as possible, before clients have a
 				 * chance to connect.
+				 */
+				/* PAR 2025-06-24 I aquired an interesing Spaceball 4000 FLX with
+				 * "Firmware version 2.42 created on 24-Oct-1997". The label is
+				 * printed on a laser printer with a "PENDING" "water mark" across it
+				 * and a "S/N: BETA-483"
 				 */
 				return DEV_SB2003C;
 			}
@@ -510,8 +534,13 @@ static int sball_parsepkt(struct spndev* dev, union spndev_event* evt, int id, c
 		if(!(sb->flags & SB4000)) {
 			printf("Switching to spaceball 4000flx/5000flx-a mode (12 buttons)            \n");
 			sb->flags |= SB4000;
-			dev->num_buttons = 12;	/* might have guessed 8 before */	// PAR@@@@@@ FIIIIX reallocate the button names array at the very least!
-			sb->keymask      = 0xffff >> (16 - dev->num_buttons);
+			/* Might have guessed 8 buttons before. By calling init_dev(dev, DEV_SB4000) we reinitialize
+			   the dev->drvdata (sb) structure for 12 buttons (enough space for names, keymask etc.) */
+			deinit_dev(dev);	// Free allocated members otherwise we will leak them in the next init_dev.
+			if (init_dev(dev, DEV_SB4000) == -1) {
+				fprintf(stderr, "spndev_open: failed to initialize device structure\n");
+				// return -1?
+			}
 		}
 		/* update orientation flag (actually don't bother) */
 		/*

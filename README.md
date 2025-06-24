@@ -34,6 +34,7 @@ Device | Manufacturer | Note
 ------ | ------------ | ----
 [Magellan SpaceMouse Classic](https://spacemice.org/index.php?title=Spacemouse_Classic) | LogiCad3D GmbH (1993) | Fw: "v  MAGELLAN  Version 5.79  by LOGITECH INC. 10/10/97"
 [Spaceball 3003 FLX](https://spacemice.org/index.php?title=Spaceball_3003) | Spacetec IMC Ltd. (1996) | Fw: "Firmware version 2.62 created on 24-Oct-1997."
+[Spaceball 4000 FLX](https://spacemice.org/index.php?title=Spaceball_4000) |  Spacetec IMC Corporation | Fw: "Firmware version 2.42 created on 24-Oct-1997."
 [Magellan SpaceMouse Plus](https://spacemice.org/index.php?title=Spacemouse_Plus) | LogiCad3D GmbH (1998), 3DConnexion (2001) | Fw: "v  MAGELLAN  Version 6.70  3Dconnexion GmbH 05/11/02"
 
 If you own a SpaceMouse not listed above please test it and report your results in the issues. Just
