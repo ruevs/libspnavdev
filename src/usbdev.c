@@ -65,7 +65,7 @@ typedef struct {
 } dev_info;
 
 static const dev_info devinfo[] = {
-    {0x046d, 0xc603, O, "SpaceMouse Plus XT USB" ,          "",           10, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}},  // Manual says 11 is the * reported? Buttons order? Side button names? "L" "R"?
+    {0x046d, 0xc603, O, "SpaceMouse Plus XT USB" ,          "Plus XT-USB",11, {"1", "2", "3", "4", "5", "6", "7", "8", "*", "L", "R"}},  // Side button names? "L" "R"? "Magellan SpaceMouse" in serdev.c calls them "+" and "-" respectively.
     {0x046d, 0xc605, O, "CadMan USB",                       "",            4, {"1", "2", "3", "4"}},  // Buttons order? Names? "CadMan3 USB" on the label // Tested working
     {0x046d, 0xc606, O, "SpaceMouse Classic USB",           "",            8, {"1", "2", "3", "4", "5", "6", "7", "8"}},  // Manual says 11 is the * reported?
     {0x046d, 0xc621, O, "SpaceBall 5000 USB",               "SB5000 USB", 12, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C"}},  // Tested working
@@ -155,6 +155,7 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
                     hid_device* hiddev = hid_open_path(cinfo->path);
                     if (hiddev) {
                         size_t name_length;
+                        wchar_t* prod_str = cinfo->product_string;
 
                         if (!(dev->path = strdup(cinfo->path))) {
                             fprintf(stderr, "spndev_open: Failed to allocate device path\n");
@@ -162,12 +163,12 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
                         }
 
                         // The length of the UTF8 encoding of the UTF16 device name + 1 for the 0
-                        name_length = 1 + wcsrtombs(0, (const wchar_t**)&cinfo->product_string, 0, 0);
+                        name_length = 1 + wcsrtombs(0, (const wchar_t**)&prod_str, 0, 0);
                         if (!(dev->name = (char*)calloc(1, name_length))) {
                             fprintf(stderr, "spndev_open: Failed to allocate device name\n");
                             goto cleanup;
                         }
-                        name_length = wcsrtombs(dev->name, (const wchar_t**)&cinfo->product_string, name_length, 0);
+                        name_length = wcsrtombs(dev->name, (const wchar_t**)&prod_str, name_length, 0);
 
                         if (-1 == hid_set_nonblocking(hiddev, 1)) {
                             fprintf(stderr, "spndev_open: Failed to set non-blocking HID mode.\n");

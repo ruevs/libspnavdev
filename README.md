@@ -19,6 +19,7 @@ well. The following devices are tested and fully working - 6DOF input, buttons, 
 
 Device | VID | PID | Note
 ------ | --- | --- | ----
+SpaceMouse Plus XT USB | 0x046d | 0xc603 |
 CadMan USB | 0x046d | 0xc605 | 
 SpaceBall 5000 USB | 0x046d | 0xc621 | 
 SpaceTraveler USB | 0x046d | 0xc623 | 
