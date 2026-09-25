@@ -43,8 +43,12 @@ void usercallback(union spndev_event ev, void* uptr) {
 	}
 }
 
+#define VID_PID_FORMAT_STR "%#0.4hx:%#0.4hx"
+
 extern int test()
 {
+	uint16_t usb_vendor, usb_product;
+
 	if(!(dev = spndev_open(0))) {
 		fprintf(stderr, "Failed to open 6dof device\n");
 		return 1;
@@ -52,6 +56,9 @@ extern int test()
 
 	spndev_set_userptr(dev, (void*)dev);
 	spndev_set_usercallback(dev, usercallback);
+
+	spndev_usbid(dev, &usb_vendor, &usb_product);
+	printf("Opened HID device %s " VID_PID_FORMAT_STR " %s\n", spndev_name(dev), usb_vendor, usb_product, spndev_path(dev));
 
 	printf("Monitoring device, ctrl-c to quit\n");
 
