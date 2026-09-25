@@ -109,11 +109,13 @@ jobs:
         rm -f Makefile || true
         rm -f cmake_install.cmake || true
     - name: Upload web version as artifact
+      # https://github.com/marketplace/actions/upload-github-pages-artifact
       id: upload_web
       uses: actions/upload-pages-artifact@v3
       with:
         path: build/examples/web/
 
+  # https://github.com/marketplace/actions/deploy-github-pages-site
   deploy_web:
     # If you want deployment only on pushes to master (not manual runs on master), use:
     # if: github.event_name == 'push' && github.ref == 'refs/heads/master'

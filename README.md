@@ -1,6 +1,6 @@
 spnavdev library
 ================
-This is a direct 6DOF (Sixe Degeees Of Freedom) device (a.k.a. SpaceMouse) handling library written
+This is a direct 6DOF (Six Degrees Of Freedom) device (a.k.a. SpaceMouse) handling library written
 in C, which is usable as a standalone library to interface with 6DOF devices without relying on
 anything but a USB HID driver ([HIDAPI](https://github.com/libusb/hidapi) on Windows and Linux) and
 some code to read/write from an UART (RS-232 port) for the serial SpaceMice.
@@ -8,11 +8,14 @@ some code to read/write from an UART (RS-232 port) for the serial SpaceMice.
 It is easily portable to embedded systems, robot controllers, non-UNIX systems etc.
 
 The goal of spnavdev is to handle all USB and serial 6DOF devices, across multiple platforms such
-as: all UNIX systems, windows, DOS, and possibly even bare metal on certain systems.
+as: all UNIX systems, Windows, DOS, and possibly even bare metal on certain systems.
 
-The library also works in [web browsers](#building-for-web) that support the [WebHID][webhid] api.
+The library also works in [web browsers](#building-for-web) that support the [WebHID][webhid] API.
+
+### [Try it right now in your browser with your SpaceMouse][live].
 
 [webhid]: https://caniuse.com/webhid
+[live]: https://ruevs.github.io/libspnavdev/test.html
 
 ### Supported devices
 
@@ -141,7 +144,7 @@ make
 [cmakewin]: http://www.cmake.org/download/#latest
 [mingw]: http://www.mingw.org/
 
-### Building for web
+### Building for Web
 
 You will need the usual build tools, cmake and [Emscripten][]. On a Debian derivative (e.g. Ubuntu) dependencies other than Emscripten can be installed with:
 
@@ -204,7 +207,7 @@ License
 -------
 Copyright (C) 2020 John Tsiombikas <nuclear@member.fsf.org>
 
-Copyright (C) 2021-2024 [ruevs](https://github.com/ruevs) and [rpavlik](https://github.com/rpavlik)
+Copyright (C) 2021-2026 [ruevs](https://github.com/ruevs) and [rpavlik](https://github.com/rpavlik)
 
 This library is free software, feel free to use, modify and/or redistribute it under the terms of
 the GNU General Public License v3, or at your option any later version published by the Free
