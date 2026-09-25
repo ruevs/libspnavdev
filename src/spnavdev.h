@@ -49,6 +49,8 @@ union spndev_event {
 	struct spndev_event_button bn;
 };
 
+typedef void (spndev_callback)(union spndev_event ev, void *uptr);
+
 /* possible devstr parameters:
  * - null: auto-detect (USB only)
  * - device file (e.g. COM6 or /dev/ttyS0 or /dev/input/event42)
@@ -59,6 +61,8 @@ void spndev_close(struct spndev *dev);
 
 void spndev_set_userptr(struct spndev *dev, void *uptr);
 void *spndev_get_userptr(struct spndev *dev);
+
+int spndev_set_usercallback(struct spndev* dev, spndev_callback callback);
 
 /* device information */
 const char *spndev_name(struct spndev *dev);

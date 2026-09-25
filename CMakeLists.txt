@@ -27,8 +27,8 @@ if(WIN32)
 endif()
 
 if(EMSCRIPTEN)
-  set (CMAKE_CXX_STANDARD 11)
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  set (CMAKE_CXX_STANDARD 17)
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
   SET_SOURCE_FILES_PROPERTIES(
     src/serdev.c
     src/spnavdev.c

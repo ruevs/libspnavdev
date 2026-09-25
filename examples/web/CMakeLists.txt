@@ -22,15 +22,15 @@ target_link_libraries(test PRIVATE spnavdev)
 if(EMSCRIPTEN)
     set(M_LIBRARY "" CACHE STRING "libm (not necessary)" FORCE)
 
-#	set(CMAKE_EXECUTABLE_SUFFIX ".html")
-
-    set(SHELL ${CMAKE_CURRENT_SOURCE_DIR}/test.html)
-
     set_target_properties(test PROPERTIES LINK_FLAGS
-		"--bind
-		--no-heap-copy -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s ASYNCIFY=1
+		"--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/test.html
+		--bind
+		-s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s ASYNCIFY=1
 		-s DYNCALLS=1 -s ASSERTIONS=1
 		-s EXPORTED_RUNTIME_METHODS=ccall,cwrap
 		-s EXPORTED_FUNCTIONS=_test,_main
-		-s TOTAL_STACK=33554432 -s TOTAL_MEMORY=134217728")
+		-s TOTAL_STACK=33554432 -s TOTAL_MEMORY=134217728"
+		SUFFIX ".html")
+    set_property(TARGET test APPEND PROPERTY LINK_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/test.html")
 endif()

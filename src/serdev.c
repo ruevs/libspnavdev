@@ -57,7 +57,7 @@ static struct {
 	{"Magellan SpaceMouse", 11, {"1", "2", "3", "4", "5", "6", "7", "8", "*", "+", "-"}},
 	{"Spaceball 5000FLX", 12, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C"}},
 	{"CadMan", 4, {"1", "2", "3", "4"}},
-	{"Space Explorer", 14, {"1", "2", "T", "L", "R", "F", "ALT", "ESC", "SHIFT", "CTRL", "Fit", "Panel", "+", "-", "2D"}},
+	{"Space Explorer", 15, {"1", "2", "T", "L", "R", "F", "ALT", "ESC", "SHIFT", "CTRL", "Fit", "Panel", "+", "-", "2D"}},	// 3DX-700027
 	{0, 0, {0}}
 };
 
@@ -102,6 +102,7 @@ int spndev_ser_open(struct spndev *dev, const char *devstr)
 	dev->drvdata = sb;
 	dev->close = close_dev_serial;
 	dev->read = read_dev_serial;
+	dev->setcallback = 0;
 	dev->setled = 0;
 	dev->getled = 0;
 	dev->setlcdbl = 0;

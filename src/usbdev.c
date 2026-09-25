@@ -50,6 +50,7 @@ static const int axis_deadz = 0;
 typedef struct spnav_hid {
     unsigned char btn[max_num_btn];
     unsigned char buf[max_buf_size];
+    int motion[6];
     size_t reportsize;
 } tspnav_hid;
 
@@ -95,6 +96,7 @@ static void usbdev_close(struct spndev* dev);
 static int usbdev_read(struct spndev* dev, union spndev_event* evt);
 static int usbdev_parse_O(struct spndev* dev, union spndev_event* evt);
 static int usbdev_parse_N(struct spndev* dev, union spndev_event* evt);
+static int usbdev_setcallback(struct spndev* dev, spndev_callback callback);
 static void usbdev_setled(struct spndev* dev, int led);
 static int usbdev_getled(struct spndev* dev);
 static inline void usbdev_parsebuttons(const struct spndev* dev, union spndev_event* evt, const unsigned char* report);
@@ -260,6 +262,7 @@ static int usbdev_init(struct spndev* dev, const unsigned type)
     } else {
         // WTF?
     }
+    dev->setcallback = usbdev_setcallback;
     dev->getled = usbdev_getled;
     dev->setled = usbdev_setled;
     if((dev->usb_vendor == devinfo[5].vid) && (dev->usb_product == devinfo[5].pid)) {   // ToDo: The constant 5 here is an ugly hack
@@ -283,7 +286,6 @@ static void usbdev_close(struct spndev *dev) {
 
 }
 
-
 // Read and parse positon and rotation data
 static int usbdev_read(struct spndev* dev, union spndev_event* evt)
 {
@@ -301,11 +303,40 @@ static int usbdev_read(struct spndev* dev, union spndev_event* evt)
     return evt->type;
 }
 
+static void usbdev_callback(unsigned char* data, size_t length, void* uptr) {
+    struct spndev* dev = (struct spndev*)uptr;
+    union spndev_event evt;
+    tspnav_hid* hid = (tspnav_hid*)dev->drvdata;
+    size_t copy_length;
+
+    evt.type = SPNDEV_NONE;
+    if (!hid) {
+        return;
+    }
+
+    copy_length = length < hid->reportsize ? length : hid->reportsize;
+    memset(hid->buf, 0, hid->reportsize);
+    memcpy(hid->buf, data, copy_length);
+
+    if (oldposrotreportsize == hid->reportsize) {
+        usbdev_parse_O(dev, &evt);
+    }
+    else {
+        usbdev_parse_N(dev, &evt);
+    }
+
+    if (evt.type != SPNDEV_NONE && dev->callback) {
+        dev->callback(evt, dev->uptr);
+    }
+}
+
+
 // Parse "Old" (two reports) style positon and rotation data
 static int usbdev_parse_O(struct spndev* dev, union spndev_event* evt)
 {
     evt->type = SPNDEV_NONE;
-    unsigned char *buffer = ((tspnav_hid*)dev->drvdata)->buf;
+    tspnav_hid* hid = (tspnav_hid*)dev->drvdata;
+    unsigned char *buffer = hid->buf;
 
     switch (buffer[0]) {
     case 0:
@@ -317,17 +348,19 @@ static int usbdev_parse_O(struct spndev* dev, union spndev_event* evt)
     case 1:   // Translation
         evt->type = SPNDEV_MOTION;
         for (int i = 0; i < 3; ++i) {
-            evt->mot.v[i] = *(int16_t*)(buffer + 1 + 2 * i);
-            checkrange(dev, evt->mot.v[i]);
+            hid->motion[i] = *(int16_t*)(buffer + 1 + 2 * i);
+            checkrange(dev, hid->motion[i]);
         }
+        memcpy(evt->mot.v, hid->motion, sizeof hid->motion);
         break;
 
     case 2:   // Rotation
         evt->type = SPNDEV_MOTION;
         for (int i = 0; i < 3; ++i) {
-            evt->mot.v[i + 3] = *(int16_t*)(buffer + 1 + 2 * i);
-            checkrange(dev, evt->mot.v[i + 3]);
+            hid->motion[i + 3] = *(int16_t*)(buffer + 1 + 2 * i);
+            checkrange(dev, hid->motion[i + 3]);
         }
+        memcpy(evt->mot.v, hid->motion, sizeof hid->motion);
         break;
     case 3:  // Buttons
         usbdev_parsebuttons(dev, evt, buffer);
@@ -346,7 +379,8 @@ static int usbdev_parse_O(struct spndev* dev, union spndev_event* evt)
 static int usbdev_parse_N(struct spndev* dev, union spndev_event* evt)
 {
     evt->type = SPNDEV_NONE;
-    unsigned char* buffer = ((tspnav_hid*)dev->drvdata)->buf;
+    tspnav_hid* hid = (tspnav_hid*)dev->drvdata;
+    unsigned char* buffer = hid->buf;
 
     switch (buffer[0]) {
     case 0:
@@ -358,9 +392,10 @@ static int usbdev_parse_N(struct spndev* dev, union spndev_event* evt)
     case 1:   // Translation & Rotation
         evt->type = SPNDEV_MOTION;
         for (int i = 0; i < 6; ++i) {
-            evt->mot.v[i] = *(int16_t*)(buffer + 1 + 2 * i);
-            checkrange(dev, evt->mot.v[i]);
+            hid->motion[i] = *(int16_t*)(buffer + 1 + 2 * i);
+            checkrange(dev, hid->motion[i]);
         }
+        memcpy(evt->mot.v, hid->motion, sizeof hid->motion);
         break;
 
     case 3:  // Buttons
@@ -374,6 +409,18 @@ static int usbdev_parse_N(struct spndev* dev, union spndev_event* evt)
         break;
     }
     return evt->type;
+}
+
+static int usbdev_setcallback(struct spndev* dev, spndev_callback callback) {
+#if defined(HAVE_WEBHIDAPI)
+    (void)callback;
+    return hid_set_callback((hid_device*)dev->handle, usbdev_callback, (void *)dev);
+#else
+    (void)dev;
+    (void)callback;
+    return -1;
+#endif
+
 }
 
 static void usbdev_setled(struct spndev *dev, int led)
@@ -455,7 +502,7 @@ static inline void checkrange(const struct spndev* dev, const int val) {
  */
 static void SpacePilotLCDStartPos(struct spndev* dev, unsigned char column, unsigned char row) {
     /* https://forum.3dconnexion.com/viewtopic.php?f=19&t=1095
-        Post by jwick » Wed Aug 29, 2007 8 : 14 am
+        Post by jwick Â» Wed Aug 29, 2007 8 : 14 am
         Hello mew,
 
             There was a small problem in an earlier version of the SP firmware where requests to

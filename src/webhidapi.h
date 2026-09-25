@@ -1,13 +1,19 @@
-// emcmake cmake ..\git -DCMAKE_BUILD_TYPE=Release
-// ninja
-// emrun examples\web\test.html
+/*
+ * Minimal hidapi-style wrapper for WebHID, used by the Emscripten build.
+ */
+#ifndef WEBHIDAPI_H_
+#define WEBHIDAPI_H_
 
-#include <emscripten.h>
-#include <emscripten/val.h>
-#include <emscripten/html5.h>
 #include <emscripten/bind.h>
-#include <iostream>
-#include <malloc.h>
+#include <emscripten/val.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cwchar>
+#include <map>
+#include <queue>
+#include <string>
+#include <vector>
 
 using namespace emscripten;
 
@@ -17,7 +23,7 @@ typedef struct hid_device_ hid_device; /**< opaque hidapi structure */
 /** @brief HID underlying bus types.
 
 	@ingroup API
-*/
+ */
 typedef enum {
 	/** Unknown bus type */
 	HID_API_BUS_UNKNOWN = 0x00,
@@ -85,149 +91,316 @@ struct hid_device_info {
 	hid_bus_type bus_type;
 };
 
-/* PAR@@@: Not really needed but anyway */
-#define HID_API_EXPORT /**< API export macro */
-#define HID_API_CALL /**< API call macro */
+#define HID_API_EXPORT
+#define HID_API_CALL
 
-/*	https://wicg.github.io/webhid/#requestdevice-method
-	https://wicg.github.io/webhid/#dom-hid-getdevices
-	https://web.dev/hid/
-	https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html#embind-val-guide
-	https://emscripten.org/docs/api_reference/val.h.html
-	https://web.dev/articles/emscripten-embedding-js-snippets
-	https://emscripten.org/docs/porting/asyncify.html
-	https://emscripten.org/docs/tools_reference/emcc.html#emcc-s-option-value */
+typedef void (hid_input_report_callback)(unsigned char* data, size_t length, void* uptr);
+
+struct hid_device_ {
+	val* js_device;
+	hid_input_report_callback* input_report_callback;
+	void* input_report_user_data;
+	int nonblocking;
+	std::queue<std::vector<unsigned char> > reports;
+};
+
+static std::map<std::string, val*> webhid_device_registry;
+static unsigned long webhid_next_path_id = 1;
+
+void HID_API_EXPORT HID_API_CALL hid_free_enumeration(struct hid_device_info* devs);
+
+static char* webhid_strdup(const std::string& str)
+{
+	size_t len = str.size() + 1;
+	char* copy = (char*)malloc(len);
+
+	if(copy) {
+		memcpy(copy, str.c_str(), len);
+	}
+	return copy;
+}
+
+static wchar_t* webhid_wcsdup_ascii(const std::string& str)
+{
+	size_t len = str.size();
+	wchar_t* copy = (wchar_t*)calloc(len + 1, sizeof(wchar_t));
+
+	if(copy) {
+		for(size_t i = 0; i < len; ++i) {
+			copy[i] = (unsigned char)str[i];
+		}
+	}
+	return copy;
+}
+
+static std::string webhid_get_string_prop(const val& obj, const char* prop)
+{
+	val v = obj[prop];
+
+	if(v.isUndefined() || v.isNull()) {
+		return std::string();
+	}
+	return v.as<std::string>();
+}
+
+static val webhid_build_filters(unsigned short vendor_id, unsigned short product_id)
+{
+	val filters = val::array();
+
+	if(vendor_id) {
+		val filter = val::object();
+		filter.set("vendorId", vendor_id);
+		if(product_id) {
+			filter.set("productId", product_id);
+		}
+		filters.call<void>("push", filter);
+	} else {
+		static const unsigned short vendors[] = {0x046d, 0x256f};
+		for(size_t i = 0; i < sizeof vendors / sizeof vendors[0]; ++i) {
+			val filter = val::object();
+			filter.set("vendorId", vendors[i]);
+			filters.call<void>("push", filter);
+		}
+	}
+
+	return filters;
+}
+
+static struct hid_device_info* webhid_append_device_info(struct hid_device_info** tail, const val& device)
+{
+	struct hid_device_info* info;
+	std::string path_key;
+	std::string manufacturer;
+	std::string product;
+	val usage_page;
+	val usage;
+
+	if(!(info = (struct hid_device_info*)calloc(1, sizeof *info))) {
+		return 0;
+	}
+
+	path_key = std::string("webhid:") + std::to_string(webhid_next_path_id++);
+	webhid_device_registry[path_key] = new val(device);
+
+	info->path = webhid_strdup(path_key);
+	info->vendor_id = device["vendorId"].as<unsigned short>();
+	info->product_id = device["productId"].as<unsigned short>();
+	manufacturer = webhid_get_string_prop(device, "manufacturerName");
+	product = webhid_get_string_prop(device, "productName");
+	info->manufacturer_string = webhid_wcsdup_ascii(manufacturer);
+	info->product_string = webhid_wcsdup_ascii(product);
+	info->interface_number = -1;
+	info->bus_type = HID_API_BUS_USB;
+	usage_page = device["usagePage"];
+	usage = device["usage"];
+	if(!usage_page.isUndefined() && !usage_page.isNull()) {
+		info->usage_page = usage_page.as<unsigned short>();
+	}
+	if(!usage.isUndefined() && !usage.isNull()) {
+		info->usage = usage.as<unsigned short>();
+	}
+
+	(*tail)->next = info;
+	*tail = info;
+	return info;
+}
 
 struct hid_device_info HID_API_EXPORT* HID_API_CALL hid_enumerate(unsigned short vendor_id, unsigned short product_id)
 {
-//	val device = val::global("Navigator.hid").call<val>("requestDevice", std::string("{filters: [{ vendorId: 0x046d }, { vendorId: 0x256f }]}"));
-//	val webhid = val::global("Navigator.hid");
-	val::global("console").call<void>("log", std::string("hid_enumerate"));
+	struct hid_device_info head;
+	struct hid_device_info* tail = &head;
 	val navigator = val::global("navigator");
 	val hid = navigator["hid"];
-	if (hid.isUndefined()) {
-//	if (!hid.as<bool>()) {
+	val devices;
+	val options;
+	size_t count;
+
+	memset(&head, 0, sizeof head);
+
+	if(hid.isUndefined() || hid.isNull()) {
 		printf("WebHID API not supported. Check https://caniuse.com/webhid for a list of browsers that support it.\n");
 		return 0;
-	} else {
-//		val hid = webhid.new_();
-//		val device = hid.call<void>("requestDevice", "{filters: [{ vendorId: 0x046d }, { vendorId: 0x256f }]}");
-		//val reqd = hid["requestDevice"].await();
-//		val devices = hid.call<val>("requestDevice", std::string("{filters: [{ vendorId: 0x046d }, { vendorId: 0x256f }]}")).await();
+	}
 
+	options = val::object();
+	options.set("filters", webhid_build_filters(vendor_id, product_id));
+	devices = hid.call<val>("requestDevice", options).await();
+	count = devices["length"].as<size_t>();
 
-		// Define the filters
-		val filters = val::array();
-		val filter1 = val::object();
-		filter1.set("vendorId", "0x046d");
-		filters.call<void>("push", filter1);
-		val filter2 = val::object();
-		filter2.set("vendorId", "0x256f");
-		filters.call<void>("push", filter2);
-
-		// Create options object with filters
-		val options = val::object();
-		options.set("filters", filters);
-
-		val::global("console").call<void>("log", options);
-
-		val devices = hid.call<val>("requestDevice", options).await();
-
-		val::global("console").call<void>("log", devices);
-//		std::cout << "Devices: " << devices.as<std::string>() << std::endl;
-		if (0 == devices["length"].as<size_t>()) {
+	for(size_t i = 0; i < count; ++i) {
+		if(!webhid_append_device_info(&tail, devices[i])) {
+			hid_free_enumeration(head.next);
 			return 0;
 		}
-		else {
-			hid_device_info* devs = new hid_device_info;
-			devs->path = (char*)(new val(devices[0]));
-			devs->product_string = (wchar_t*)calloc(devices[0]["productName"].as<std::string>().length(), sizeof(char));
-			wcscpy(devs->product_string, (wchar_t*)(devices[0]["productName"].as<std::string>().c_str()));
-			devs->product_id = devices[0]["productId"].as<unsigned short>();
-			devs->vendor_id = devices[0]["vendorId"].as<unsigned short>();
-
-			return devs;
-		}
 	}
+
+	return head.next;
 }
 
-void  HID_API_EXPORT HID_API_CALL hid_free_enumeration(struct hid_device_info* devs)
+void HID_API_EXPORT HID_API_CALL hid_free_enumeration(struct hid_device_info* devs)
 {
-	val::global("console").call<void>("log", std::string("hid_free_enumeration"));
+	while(devs) {
+		struct hid_device_info* current = devs;
 
-	while (devs) {
-		hid_device_info* current = devs;
 		devs = devs->next;
-		delete current->path;
-		delete current->serial_number;
-		delete current->manufacturer_string;
-		delete current->product_string;
-		delete current;
+		free(current->path);
+		free(current->serial_number);
+		free(current->manufacturer_string);
+		free(current->product_string);
+		free(current);
 	}
 }
 
-static void hid_handleInputReport(val e) {
-	val::global("console").call<void>("log", std::string("hid_handleInputReport"));
-	val::global("console").call<void>("log", e);
-	e.call<void>("preventDefault");				// don't interfere with regular mouse cursor
-	e.call<void>("stopImmediatePropagation");	// don't interfere with regular mouse cursor
+static void hid_handleInputReport(val event)
+{
+	val target = event["currentTarget"];
+	val handle_value = target["__spnav_handle"];
+	hid_device* handle;
+	val data_view;
+	size_t length;
+	std::vector<unsigned char> report;
 
+	if(handle_value.isUndefined() || handle_value.isNull()) {
+		return;
+	}
+
+	handle = (hid_device*)handle_value.as<uintptr_t>();
+	if(!handle) {
+		return;
+	}
+
+	data_view = event["data"];
+	length = data_view["byteLength"].as<size_t>();
+	report.resize(length + 1);
+	report[0] = event["reportId"].as<unsigned char>();
+
+	for(size_t i = 0; i < length; ++i) {
+		report[i + 1] = data_view.call<unsigned char>("getUint8", (unsigned)i);
+	}
+
+	if(handle->input_report_callback) {
+		handle->input_report_callback(report.data(), report.size(), handle->input_report_user_data);
+	} else {
+		handle->reports.push(report);
+	}
 }
 
-EMSCRIPTEN_BINDINGS(my_module) {
+EMSCRIPTEN_BINDINGS(webhidapi_module) {
 	function("hid_handleInputReport", &hid_handleInputReport);
 }
 
 HID_API_EXPORT hid_device* HID_API_CALL hid_open_path(const char* path)
 {
-	val::global("console").call<void>("log", std::string("hid_open_path"));
+	std::map<std::string, val*>::const_iterator it;
+	hid_device* handle;
 
-	val* device = (val *)path;
-	val::global("console").call<void>("log", *device);
-	device->call<val>("open").await();
-	val::global("console").call<void>("log", *device);
-	if (true == (*device)["opened"].as<bool>()) {
-		device->call<void>("addEventListener", std::string("inputreport"), val::module_property("hid_handleInputReport"));
-/*		device->call<void>("addEventListener", "inputreport", function(val event) {
-			var data = new Uint8Array(event.data.buffer);
-			Module._cppInputReportHandler(data.byteOffset, data.byteLength);
-		});*/
-		return (hid_device*)path;
+	if(!path) {
+		return 0;
 	}
 
+	it = webhid_device_registry.find(path);
+	if(it == webhid_device_registry.end()) {
+		return 0;
+	}
+
+	handle = new hid_device();
+	handle->js_device = new val(*it->second);
+	handle->input_report_callback = 0;
+	handle->input_report_user_data = 0;
+	handle->nonblocking = 1;
+
+	handle->js_device->call<val>("open").await();
+	if(!(*handle->js_device)["opened"].as<bool>()) {
+		delete handle->js_device;
+		delete handle;
+		return 0;
+	}
+
+	handle->js_device->set("__spnav_handle", val((uintptr_t)handle));
+	handle->js_device->call<void>("addEventListener", std::string("inputreport"), val::module_property("hid_handleInputReport"));
+	return handle;
+}
+
+HID_API_EXPORT int HID_API_CALL hid_set_callback(hid_device* dev,
+		hid_input_report_callback input_report_callback, void* uptr)
+{
+	if(!dev || !dev->js_device || !(*dev->js_device)["opened"].as<bool>()) {
+		return -1;
+	}
+
+	dev->input_report_callback = input_report_callback;
+	dev->input_report_user_data = uptr;
 	return 0;
 }
 
-int  HID_API_EXPORT HID_API_CALL hid_write(hid_device* dev, const unsigned char* data, size_t length)
+int HID_API_EXPORT HID_API_CALL hid_write(hid_device* dev, const unsigned char* data, size_t length)
 {
-	val::global("console").call<void>("log", std::string("hid_write"));
+	if(!dev || !dev->js_device || !data || length == 0) {
+		return -1;
+	}
 
-	return -1;
+	dev->js_device->call<val>("sendReport", (unsigned)data[0],
+			val(typed_memory_view(length - 1, data + 1))).await();
+	return (int)length;
 }
 
-int  HID_API_EXPORT HID_API_CALL hid_read(hid_device* dev, unsigned char* data, size_t length)
+int HID_API_EXPORT HID_API_CALL hid_read(hid_device* dev, unsigned char* data, size_t length)
 {
-	val::global("console").call<void>("log", std::string("hid_read"));
+	std::vector<unsigned char> report;
+	size_t copy_len;
 
-	return -1;
+	if(!dev || !data || !length) {
+		return -1;
+	}
+
+	if(dev->reports.empty()) {
+		return 0;
+	}
+
+	report = dev->reports.front();
+	dev->reports.pop();
+	copy_len = length < report.size() ? length : report.size();
+	memcpy(data, report.data(), copy_len);
+	return (int)copy_len;
 }
 
-int  HID_API_EXPORT HID_API_CALL hid_set_nonblocking(hid_device* dev, int nonblock)
+int HID_API_EXPORT HID_API_CALL hid_set_nonblocking(hid_device* dev, int nonblock)
 {
-	val::global("console").call<void>("log", std::string("hid_set_nonblocking"));
+	if(!dev) {
+		return -1;
+	}
 
+	dev->nonblocking = nonblock;
 	return 0;
 }
 
 int HID_API_EXPORT HID_API_CALL hid_send_feature_report(hid_device* dev, const unsigned char* data, size_t length)
 {
-	val::global("console").call<void>("log", std::string("hid_send_feature_report"));
+	if(!dev || !dev->js_device || !data || length == 0) {
+		return -1;
+	}
 
-	return -1;
+	dev->js_device->call<val>("sendFeatureReport", (unsigned)data[0],
+			val(typed_memory_view(length - 1, data + 1))).await();
+	return (int)length;
 }
 
 void HID_API_EXPORT HID_API_CALL hid_close(hid_device* dev)
 {
-	val::global("console").call<void>("log", std::string("hid_close"));
+	if(!dev) {
+		return;
+	}
 
+	if(dev->js_device) {
+		if((*dev->js_device)["opened"].as<bool>()) {
+			dev->js_device->call<void>("removeEventListener", std::string("inputreport"),
+					val::module_property("hid_handleInputReport"));
+			dev->js_device->call<val>("close").await();
+		}
+		delete dev->js_device;
+	}
+
+	delete dev;
 }
+
+#endif	/* WEBHIDAPI_H_ */

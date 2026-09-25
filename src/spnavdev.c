@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "spnavdev.h"
 #include "dev.h"
 
@@ -29,6 +30,7 @@ struct spndev *spndev_open(const char *devstr)
 		perror("spndev_open: failed to allocate device structure");
 		return 0;
 	}
+	memset(dev, 0, sizeof *dev);
 
 	if(!devstr || sscanf(devstr, "%hx:%hx", &vendor, &product) == 2) {
 		if(spndev_usb_open(dev, devstr, vendor, product) == -1) {
@@ -60,6 +62,14 @@ void spndev_set_userptr(struct spndev *dev, void *uptr)
 void *spndev_get_userptr(struct spndev *dev)
 {
 	return dev->uptr;
+}
+
+int spndev_set_usercallback(struct spndev* dev, spndev_callback callback) {
+	dev->callback = callback;
+	if (!dev->setcallback) {
+		return -1;
+	}
+	return dev->setcallback(dev, callback);
 }
 
 /* device information */

@@ -40,9 +40,12 @@ struct spndev {
 	int lcdbl;
 
 	void *uptr, *drvdata;
+	spndev_callback *callback;
 
 	void (*close)(struct spndev*);
 	int (*read)(struct spndev*, union spndev_event*);
+
+	int (*setcallback)(struct spndev*, spndev_callback callback);
 
 	void (*setled)(struct spndev*, int led);
 	int (*getled)(struct spndev*);

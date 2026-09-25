@@ -10,12 +10,16 @@ It is easily portable to embedded systems, robot controllers, non-UNIX systems e
 The goal of spnavdev is to handle all USB and serial 6DOF devices, across multiple platforms such
 as: all UNIX systems, windows, DOS, and possibly even bare metal on certain systems.
 
+The library also works in [web browsers](#building-for-web) that support the [WebHID][webhid] api.
+
+[webhid]: https://caniuse.com/webhid
+
 ### Supported devices
 
 The library supports all USB devices from 3Dconnexion and should support all serial devices as
 well. The following devices are tested and fully working - 6DOF input, buttons, LEDs (if present):
 
-#### USB devices (all by 3Dconnexion):
+#### Tested USB devices (all by 3Dconnexion):
 
 Device | VID | PID | Note
 ------ | --- | --- | ----
@@ -29,7 +33,7 @@ SpaceExplorer | 0x046d | 0xc627 |
 
 "New" devices (with VID = 0x256f) should work but I have not personally tested them.
 
-#### Serial devices:
+#### Tested Serial devices:
 
 Device | Manufacturer | Note
 ------ | ------------ | ----
@@ -71,7 +75,7 @@ sudo dnf install git gcc-c++ cmake
 
 Before building, [check out the project and the necessary submodules](#Building).
 
-After that, build libspnavdev as following:
+After that, build `libspnavdev` as following:
 
 ```sh
 mkdir build
@@ -122,7 +126,7 @@ Open `build\libspnavdev.sln` with Visual C++ and build it.
 
 #### Building with MinGW
 
-It is also possible to build libspnavdev using [MinGW][mingw].
+It is also possible to build `libspnavdev` using [MinGW][mingw].
 
 First, ensure that git and gcc are in your `$PATH`. Then, run the following in bash:
 
@@ -137,10 +141,45 @@ make
 [cmakewin]: http://www.cmake.org/download/#latest
 [mingw]: http://www.mingw.org/
 
+### Building for web
+
+You will need the usual build tools, cmake and [Emscripten][]. On a Debian derivative (e.g. Ubuntu) dependencies other than Emscripten can be installed with:
+
+```sh
+apt-get install git build-essential cmake
+```
+
+First, install and prepare `emsdk`:
+
+```sh
+git clone https://github.com/emscripten-core/emsdk
+cd emsdk
+./emsdk install latest
+./emsdk activate latest
+source ./emsdk_env.sh
+cd ..
+```
+
+Before building, [check out the project and the necessary submodules](#Building).
+
+After that, build `libspnavdev` as following:
+
+```sh
+mkdir build
+cd build
+emcmake cmake .. -DCMAKE_BUILD_TYPE=Release
+make
+```
+
+The example application is built as three files in the `build/examples/web` directory with names
+starting with `test`. It can be run locally with `emrun build/examples/web/test.html`.
+
+[emscripten]: https://emscripten.org/
+
 History
 -------
 John Tsiombikas (the author of [spacenavd](https://github.com/FreeSpacenav/spacenavd)) [started writing this library](https://github.com/FreeSpacenav/libspnavdev)
-in November 2020 with the inntention to:
+in November 2020 with the intention to:
 
 > eventually replace the
 > device handling code in spacenavd v2, and will also be usable as a standalone
