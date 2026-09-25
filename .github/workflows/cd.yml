@@ -106,6 +106,8 @@ jobs:
         bash .github/scripts/build-web.sh release
         cd build/examples/web
         rm -rf CMakeFiles || true
+        rm -f Makefile || true
+        rm -f cmake_install.cmake || true
     - name: Upload web version as artifact
       id: upload_web
       uses: actions/upload-pages-artifact@v3
