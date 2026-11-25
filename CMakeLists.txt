@@ -22,7 +22,8 @@ project(
   VERSION 0.1
 )
 
-if(WIN32)
+# The static runtime, unless the program building libspnavdev chose its own
+if(WIN32 AND NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
