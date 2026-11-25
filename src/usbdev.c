@@ -245,9 +245,9 @@ static int usbdev_init(struct spndev* dev, const unsigned type)
 
     for (i = 0; i < 6; i++) {
         dev->aprop[i].name = axnames[i];
-        dev->aprop->maxval = axis_max;
-        dev->aprop->minval = axis_min;
-        dev->aprop->deadz = axis_deadz;
+        dev->aprop[i].maxval = axis_max;
+        dev->aprop[i].minval = axis_min;
+        dev->aprop[i].deadz = axis_deadz;
     }
     for (i = 0; i < dev->num_buttons; i++) {
         dev->bn_name[i] = devinfo[type].bnames[i];
