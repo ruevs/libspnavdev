@@ -34,6 +34,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #if defined(HAVE_HIDAPI)
 #include "hidapi.h"
+/* hidapi 0.12 and later can open devices shared on macOS */
+#if defined(__APPLE__) && defined(HID_API_VERSION) && defined(HID_API_MAKE_VERSION)
+#if HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
+#define SHARED_OPEN
+#include "hidapi_darwin.h"
+#endif
+#endif
 #elif defined(HAVE_WEBHIDAPI)
 #include "webhidapi.h"
 #endif
@@ -117,6 +124,13 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
     struct hid_device_info* deviceinfos;
 
     memset(dev, 0, sizeof(*dev));
+
+#if defined(SHARED_OPEN)
+    /* Open shared, so the device still works in other programs and alongside the vendor driver.
+     * hid_init sets exclusive opening, so it comes first; it does nothing once hidapi is set up. */
+    hid_init();
+    hid_darwin_set_open_exclusive(0);
+#endif
 
     if (devstr) {
         /* Make a list of specific devices */
