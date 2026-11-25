@@ -303,6 +303,7 @@ static int usbdev_read(struct spndev* dev, union spndev_event* evt)
     return evt->type;
 }
 
+#if defined(HAVE_WEBHIDAPI)
 static void usbdev_callback(unsigned char* data, size_t length, void* uptr) {
     struct spndev* dev = (struct spndev*)uptr;
     union spndev_event evt;
@@ -329,6 +330,7 @@ static void usbdev_callback(unsigned char* data, size_t length, void* uptr) {
         dev->callback(evt, dev->uptr);
     }
 }
+#endif
 
 
 // Parse "Old" (two reports) style positon and rotation data
