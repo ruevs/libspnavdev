@@ -164,13 +164,24 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
                             goto cleanup;
                         }
 
-                        // The length of the UTF8 encoding of the UTF16 device name + 1 for the 0
-                        name_length = 1 + wcsrtombs(0, (const wchar_t**)&prod_str, 0, 0);
-                        if (!(dev->name = (char*)calloc(1, name_length))) {
-                            fprintf(stderr, "spndev_open: Failed to allocate device name\n");
-                            goto cleanup;
+                        // The length of the multibyte encoding of the device name + 1 for the 0
+                        name_length = (size_t)-1;
+                        if (prod_str) {
+                            name_length = wcsrtombs(0, (const wchar_t**)&prod_str, 0, 0);
                         }
-                        name_length = wcsrtombs(dev->name, (const wchar_t**)&prod_str, name_length, 0);
+                        if (name_length == (size_t)-1) {
+                            // No name, or one the current locale cannot encode
+                            if (!(dev->name = strdup(devinfo[devidx].name))) {
+                                fprintf(stderr, "spndev_open: Failed to allocate device name\n");
+                                goto cleanup;
+                            }
+                        } else {
+                            if (!(dev->name = (char*)calloc(1, name_length + 1))) {
+                                fprintf(stderr, "spndev_open: Failed to allocate device name\n");
+                                goto cleanup;
+                            }
+                            name_length = wcsrtombs(dev->name, (const wchar_t**)&prod_str, name_length + 1, 0);
+                        }
 
                         if (-1 == hid_set_nonblocking(hiddev, 1)) {
                             fprintf(stderr, "spndev_open: Failed to set non-blocking HID mode.\n");
