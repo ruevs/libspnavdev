@@ -54,8 +54,15 @@ endif()
 
 if(WIN32 OR APPLE)
   set(HAVE_HIDAPI TRUE)
-  set(BUILD_SHARED_LIBS FALSE)
-  add_subdirectory(extlib/hidapi)
+  # A hidapi the program building libspnavdev already has, or an installed one
+  # (e.g. -DCMAKE_PREFIX_PATH=<its prefix>), is used before the submodule
+  if(NOT TARGET hidapi::hidapi)
+    find_package(hidapi QUIET)
+  endif()
+  if(NOT TARGET hidapi::hidapi)
+    set(BUILD_SHARED_LIBS FALSE)
+    add_subdirectory(extlib/hidapi)
+  endif()
   target_link_libraries(spnavdev PRIVATE hidapi::hidapi)
   target_include_directories(spnavdev PRIVATE ${CMAKE_BINARY_DIR}/extlib/hidapi/hidapi)
 elseif(EMSCRIPTEN)
