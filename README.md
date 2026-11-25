@@ -2,7 +2,7 @@ spnavdev library
 ================
 This is a direct 6DOF (Six Degrees Of Freedom) device (a.k.a. SpaceMouse) handling library written
 in C, which is usable as a standalone library to interface with 6DOF devices without relying on
-anything but a USB HID driver ([HIDAPI](https://github.com/libusb/hidapi) on Windows and Linux) and
+anything but a USB HID driver ([HIDAPI](https://github.com/libusb/hidapi) on Windows, macOS and Linux) and
 some code to read/write from an UART (RS-232 port) for the serial SpaceMice.
 
 It is easily portable to embedded systems, robot controllers, non-UNIX systems etc.
@@ -86,6 +86,18 @@ cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make
 ```
+
+### Building on macOS
+
+You will need the Xcode command line tools (`xcode-select --install`) and CMake.
+
+Before building, [check out the project and the necessary submodules](#Building), then build with
+CMake as on Linux; the Makefile does not build on macOS.  The `test` program is in
+`build/examples/unix`.
+
+The device is opened shared, so it also works in other programs at the same time.  If 3Dconnexion's
+own driver (3DxWare) is running, it may take the device's reports for itself; quit it to use
+`libspnavdev`.
 
 ### Building on Windows
 
