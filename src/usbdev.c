@@ -183,18 +183,18 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
                         dev->usb_product = cinfo->product_id;
                         opened = 1;
                         err = 0;    // Success
-                        fwprintf(stderr, L"Opened USB device %ws %ws " VID_PID_REV_FORMAT_STR " %hs\n", cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
+                        fprintf(stderr, "Opened USB device %ls %ls " VID_PID_REV_FORMAT_STR " %s\n", cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
                         break;
                     }
                     else {
-                        fwprintf(stderr, L"Could not open USB device %ws %ws " VID_PID_REV_FORMAT_STR " %hs\n", cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
+                        fprintf(stderr, "Could not open USB device %ls %ls " VID_PID_REV_FORMAT_STR " %s\n", cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
                     }
                 }
             }
         }
 
         if (vidmatch && !pidmatch) {
-            fwprintf(stderr, L"Found unsupported USB device %s %s " VID_PID_REV_FORMAT_STR " %hs\n",
+            fprintf(stderr, "Found unsupported USB device %ls %ls " VID_PID_REV_FORMAT_STR " %s\n",
                      cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
             fprintf(stderr, "Usage Page: %#.2hx, Usage ID: %#.2hx\n", cinfo->usage_page, cinfo->usage);
             if (1 == cinfo->usage_page && 8 == cinfo->usage) {
@@ -480,9 +480,9 @@ static inline void usbdev_parsebuttons(const struct spndev* dev, union spndev_ev
 
 static inline void checkrange(const struct spndev* dev, const int val) {
     if (dev->aprop->maxval < val) {
-        fwprintf(stderr, L"Too high %i\n", val);
+        fprintf(stderr, "Too high %i\n", val);
     } else if (dev->aprop->minval > val) {
-        fwprintf(stderr, L"Too low %i\n", val);
+        fprintf(stderr, "Too low %i\n", val);
     }
 }
 
