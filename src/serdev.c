@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <ctype.h>
 #if defined(_WIN32)
 #undef _CRT_NONSTDC_NO_WARNINGS
