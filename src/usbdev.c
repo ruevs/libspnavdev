@@ -190,6 +190,7 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
                         }
                         dev->internal_id = hididx;
                         dev->handle = (void*)hiddev;
+                        dev->fd = -1;   // No file descriptor to wait on; poll spndev_process
                         dev->usb_vendor = cinfo->vendor_id;
                         dev->usb_product = cinfo->product_id;
                         opened = 1;

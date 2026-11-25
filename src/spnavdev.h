@@ -77,6 +77,7 @@ int spndev_axis_max(struct spndev *dev, int axis);
 int spndev_num_buttons(struct spndev *dev);
 const char *spndev_button_name(struct spndev *dev, int bidx);
 
+/* file descriptor to wait on for input, or -1 for a USB device, which must be polled */
 int spndev_fd(struct spndev *dev);
 void *spndev_handle(struct spndev *dev);
 

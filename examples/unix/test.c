@@ -3,6 +3,7 @@
 #include <string.h>
 #include <signal.h>
 #include <errno.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/select.h>
 #include "spnavdev.h"
@@ -22,11 +23,12 @@ static int quit;
 
 int main(int argc, char **argv)
 {
-	int fd;
+	int fd, type;
 	fd_set rdset;
 	union spndev_event ev;
 	const char *s;
 	int led=0;
+	struct timespec nap = {0, 1000000};
 
 	signal(SIGINT, sighandler);
 
@@ -40,11 +42,18 @@ int main(int argc, char **argv)
 
 	while(!quit) {
 		FD_ZERO(&rdset);
-		FD_SET(fd, &rdset);
+		if(fd >= 0) {
+			FD_SET(fd, &rdset);
+		}
 
-		if(select(fd + 1, &rdset, 0, 0, 0) > 0) {
-			if(FD_ISSET(fd, &rdset)) {
-				if(spndev_process(dev, &ev)) {
+		/* a USB device has no file descriptor to wait on: poll it instead */
+		if(fd < 0 || select(fd + 1, &rdset, 0, 0, 0) > 0) {
+			if(fd < 0 || FD_ISSET(fd, &rdset)) {
+				type = spndev_process(dev, &ev);
+				if(!type && fd < 0) {
+					nanosleep(&nap, 0);
+				}
+				if(type) {
 					switch(ev.type) {
 					case SPNDEV_MOTION:
 						printf("motion: T[%+6d %+6d %+6d]  R[%+6d %+6d %+6d]\n",
