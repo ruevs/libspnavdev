@@ -219,7 +219,10 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
             }
         }
 
-        if (vidmatch && !pidmatch) {
+        /* 3Dconnexion devices once used Logitech's vendor ID, so pass over the vendor's devices
+         * that say they are something other than a multi-axis controller, such as a mouse receiver */
+        char other_kind = (0 != cinfo->usage_page) && !(1 == cinfo->usage_page && 8 == cinfo->usage);
+        if (vidmatch && !pidmatch && !other_kind) {
             fprintf(stderr, "Found unsupported USB device %ls %ls " VID_PID_REV_FORMAT_STR " %s\n",
                      cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
             fprintf(stderr, "Usage Page: %#.2hx, Usage ID: %#.2hx\n", cinfo->usage_page, cinfo->usage);
