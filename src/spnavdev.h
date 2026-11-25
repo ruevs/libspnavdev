@@ -85,6 +85,8 @@ void *spndev_handle(struct spndev *dev);
 
 /* returns event type or 0, and fills the event structure */
 int spndev_pending(struct spndev *dev);
+/* as spndev_pending, or -1 if the device can no longer be read, e.g. a USB device that was
+ * unplugged; close it then */
 int spndev_process(struct spndev *dev, union spndev_event *ev);
 
 int spndev_set_led(struct spndev *dev, int state);

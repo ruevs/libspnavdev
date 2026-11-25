@@ -25,7 +25,12 @@ int main(int argc, char **argv)
 
 	while(!quit) {
 
-		if (spndev_process(dev, &ev)) {
+		int type = spndev_process(dev, &ev);
+		if (type < 0) {
+			fprintf(stderr, "The device can no longer be read\n");
+			break;
+		}
+		if (type) {
 			switch (ev.type) {
 			case SPNDEV_MOTION:
 				printf("motion: T[%+6d %+6d %+6d]  R[%+6d %+6d %+6d]\n",

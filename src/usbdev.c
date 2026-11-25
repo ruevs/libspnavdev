@@ -321,7 +321,11 @@ static int usbdev_read(struct spndev* dev, union spndev_event* evt)
     evt->type = SPNDEV_NONE;
     unsigned char* buffer = ((tspnav_hid*)dev->drvdata)->buf;
 
-    if (hid_read((hid_device*)dev->handle, buffer, ((tspnav_hid*)dev->drvdata)->reportsize) > 0) {
+    int len = hid_read((hid_device*)dev->handle, buffer, ((tspnav_hid*)dev->drvdata)->reportsize);
+    if (len < 0) {
+        return -1;  // The device is gone, e.g. unplugged
+    }
+    if (len > 0) {
         if (oldposrotreportsize == ((tspnav_hid*)dev->drvdata)->reportsize) {
             usbdev_parse_O(dev, evt);
         }

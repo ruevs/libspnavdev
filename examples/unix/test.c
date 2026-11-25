@@ -50,6 +50,10 @@ int main(int argc, char **argv)
 		if(fd < 0 || select(fd + 1, &rdset, 0, 0, 0) > 0) {
 			if(fd < 0 || FD_ISSET(fd, &rdset)) {
 				type = spndev_process(dev, &ev);
+				if(type < 0) {
+					fprintf(stderr, "The device can no longer be read\n");
+					break;
+				}
 				if(!type && fd < 0) {
 					nanosleep(&nap, 0);
 				}
