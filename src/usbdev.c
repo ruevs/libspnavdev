@@ -107,7 +107,7 @@ static int usbdev_setcallback(struct spndev* dev, spndev_callback callback);
 static void usbdev_setled(struct spndev* dev, int led);
 static int usbdev_getled(struct spndev* dev);
 static inline void usbdev_parsebuttons(const struct spndev* dev, union spndev_event* evt, const unsigned char* report);
-static inline void checkrange(const struct spndev* dev, const int val);
+static inline void checkrange(const struct spndev* dev, const int val, int i);
 static void SpacePilotLCDSetBl(struct spndev* dev, int state);
 static int SpacePilotLCDGetBl(struct spndev* dev);
 static void SpacePilotLCDWrite(struct spndev* dev, int state);
@@ -384,7 +384,7 @@ static int usbdev_parse_O(struct spndev* dev, union spndev_event* evt)
         evt->type = SPNDEV_MOTION;
         for (int i = 0; i < 3; ++i) {
             hid->motion[i] = *(int16_t*)(buffer + 1 + 2 * i);
-            checkrange(dev, hid->motion[i]);
+            checkrange(dev, hid->motion[i], i);
         }
         memcpy(evt->mot.v, hid->motion, sizeof hid->motion);
         break;
@@ -393,7 +393,7 @@ static int usbdev_parse_O(struct spndev* dev, union spndev_event* evt)
         evt->type = SPNDEV_MOTION;
         for (int i = 0; i < 3; ++i) {
             hid->motion[i + 3] = *(int16_t*)(buffer + 1 + 2 * i);
-            checkrange(dev, hid->motion[i + 3]);
+            checkrange(dev, hid->motion[i + 3], i);
         }
         memcpy(evt->mot.v, hid->motion, sizeof hid->motion);
         break;
@@ -428,7 +428,7 @@ static int usbdev_parse_N(struct spndev* dev, union spndev_event* evt)
         evt->type = SPNDEV_MOTION;
         for (int i = 0; i < 6; ++i) {
             hid->motion[i] = *(int16_t*)(buffer + 1 + 2 * i);
-            checkrange(dev, hid->motion[i]);
+            checkrange(dev, hid->motion[i], i);
         }
         memcpy(evt->mot.v, hid->motion, sizeof hid->motion);
         break;
@@ -511,10 +511,10 @@ static inline void usbdev_parsebuttons(const struct spndev* dev, union spndev_ev
     }
 }
 
-static inline void checkrange(const struct spndev* dev, const int val) {
-    if (dev->aprop->maxval < val) {
+static inline void checkrange(const struct spndev* dev, const int val, int i) {
+    if (dev->aprop[i].maxval < val) {
         fprintf(stderr, "Too high %i\n", val);
-    } else if (dev->aprop->minval > val) {
+    } else if (dev->aprop[i].minval > val) {
         fprintf(stderr, "Too low %i\n", val);
     }
 }
