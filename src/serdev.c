@@ -64,7 +64,7 @@ static struct {
 static void close_dev_serial(struct spndev* dev);
 static int read_dev_serial(struct spndev* dev, union spndev_event* evt);
 static int init_dev(struct spndev *dev, int type);
-static int deinit_dev(struct spndev* dev);
+static void deinit_dev(struct spndev* dev);
 
 static void stty_save(int fd, struct sball *sb);
 static void stty_restore(int fd, struct sball *sb);
@@ -246,9 +246,9 @@ static int init_dev(struct spndev *dev, int type)
 	return 0;
 }
 
-static int deinit_dev(struct spndev* dev) {
+static void deinit_dev(struct spndev* dev) {
 	if (dev->bn_name) {
-		free(dev->bn_name);
+		free((void *)(dev->bn_name));
 		dev->bn_name = 0;
 	}
 	if (dev->aprop) {
