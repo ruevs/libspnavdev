@@ -106,9 +106,9 @@ static int SpacePilotLCDGetBl(struct spndev* dev);
 static void SpacePilotLCDWrite(struct spndev* dev, int state);
 
 #ifdef _WIN32
-#define VID_PID_FORMAT_STR "%#0.4hx:%#0.4hx"
+#define VID_PID_REV_FORMAT_STR "VID 0x%0.4hX PID 0x%0.4hX REV 0x%0.4hX"
 #else
-#define VID_PID_FORMAT_STR "%#0.4hx:%#0.4hx"
+#define VID_PID_REV_FORMAT_STR "VID 0x%0.4hX PID 0x%0.4hX REV 0x%0.4hX"
 #endif
 
 int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint16_t prod)
@@ -122,7 +122,7 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
         /* Make a list of specific devices */
         deviceinfos = hid_enumerate(vend, prod);
         if (!deviceinfos) {
-            fprintf(stderr, "USB HID device " VID_PID_FORMAT_STR " not found\n", vend, prod);
+            fprintf(stderr, "USB HID device " VID_PID_REV_FORMAT_STR " not found\n", vend, prod, 0);
             return -1;
         }
     } else {
@@ -183,19 +183,19 @@ int spndev_usb_open(struct spndev *dev, const char *devstr, uint16_t vend, uint1
                         dev->usb_product = cinfo->product_id;
                         opened = 1;
                         err = 0;    // Success
-                        fwprintf(stderr, L"Opened USB device %ws " VID_PID_FORMAT_STR " %hs\n", cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->path);
+                        fwprintf(stderr, L"Opened USB device %ws %ws " VID_PID_REV_FORMAT_STR " %hs\n", cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
                         break;
                     }
                     else {
-                        fwprintf(stderr, L"Could not open USB device %s " VID_PID_FORMAT_STR " %hs\n", cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->path);
+                        fwprintf(stderr, L"Could not open USB device %ws %ws " VID_PID_REV_FORMAT_STR " %hs\n", cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
                     }
                 }
             }
         }
 
         if (vidmatch && !pidmatch) {
-            fwprintf(stderr, L"Found unsupported USB device %s %s " VID_PID_FORMAT_STR " %hs\n",
-                     cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->path);
+            fwprintf(stderr, L"Found unsupported USB device %s %s " VID_PID_REV_FORMAT_STR " %hs\n",
+                     cinfo->manufacturer_string, cinfo->product_string, cinfo->vendor_id, cinfo->product_id, cinfo->release_number, cinfo->path);
             fprintf(stderr, "Usage Page: %#.2hx, Usage ID: %#.2hx\n", cinfo->usage_page, cinfo->usage);
             if (1 == cinfo->usage_page && 8 == cinfo->usage) {
                 fprintf(stderr, "The device seems to be a \"Multi - axis Controller\". Please report it.\n");
