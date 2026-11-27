@@ -1,5 +1,22 @@
 /*
- * Minimal hidapi-style wrapper for WebHID, used by the Emscripten build.
+libspnavdev - Minimal hidapi-style wrapper for WebHID, used by the Emscripten build.
+Copyright (C) 2026 Peter Ruevski <dpr@ruevs.com>
+
+This file is part of the libspnavdev library.
+
+The libspnavdev library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public License as
+published by the Free Software Foundation; either version 3 of the
+License, or (at your option) any later version.
+
+The libspnavdev library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with the libspnavdev library; if not, see 
+<https://www.gnu.org/licenses/>.
  */
 #ifndef WEBHIDAPI_H_
 #define WEBHIDAPI_H_
